@@ -12,6 +12,12 @@ using namespace geode::prelude;
 #include <Geode/modify/ColorSelectPopup.hpp>
 #include <Geode/modify/CustomSongLayer.hpp>
 #include <Geode/modify/SetupPulsePopup.hpp>
+#include <Geode/modify/DailyLevelPage.hpp>
+#include <Geode/modify/GJPathsLayer.hpp>
+#include <Geode/modify/GJPathPage.hpp>
+#include <Geode/modify/ChallengesPage.hpp>
+#include <Geode/modify/GJPromoPopup.hpp>
+#include <Geode/modify/LevelLeaderboard.hpp>
 
 
 #define setting(type, name) Mod::get()->getSettingValue<type>(name)
@@ -208,6 +214,48 @@ class $modify(CustomSongLayer) {
 class $modify(SetupPulsePopup) {
 	void show() {
 		SetupPulsePopup::show();
+		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
+	}
+};
+
+class $modify(DailyLevelPage) {
+	void show() {
+		DailyLevelPage::show();
+		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
+	}
+};
+
+class $modify(GJPathsLayer) {
+	void show() {
+		GJPathsLayer::show();
+		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
+	}
+};
+
+class $modify(GJPathPage) {
+	void show() {
+		GJPathPage::show();
+		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
+	}
+};
+
+class $modify(ChallengesPage) {
+	void show() {
+		ChallengesPage::show();
+		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
+	}
+};
+
+class $modify(GJPromoPopup) {
+	void show() {
+		GJPromoPopup::show();
+		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
+	}
+};
+
+class $modify(LevelLeaderboard) {
+	void show() {
+		LevelLeaderboard::show();
 		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
 	}
 };
