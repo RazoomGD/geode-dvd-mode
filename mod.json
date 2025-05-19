@@ -1,0 +1,80 @@
+{
+	"geode": "4.4.0",
+	"gd": {
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
+	},
+	"id": "razoom.dvd_mode",
+	"name": "DVD Mode",
+	"version": "v1.0.0",
+	"developer": "RaZooM",
+	"tags": ["joke"],
+	"links": {
+		"source": "https://github.com/RazoomGD/geode-dvd-mode",
+		"community": "https://discord.gg/wcWvtKHP8n"
+	},
+	"description": "Adds legendary DVD screensaver bouncing to GD popups",
+
+	"settings": {
+		"enable": {
+			"type": "bool",
+			"name": "Enable",
+			"description": "<cb>Enable the mod</c>",
+			"default": true
+		},
+
+		"no-triggers": {
+			"type": "bool",
+			"name": "Exclude trigger popups",
+			"description": "<cg>Don't affect trigger and some other editor popups</c>",
+			"default": false
+		},
+
+		"only-small": {
+			"type": "bool",
+			"name": "Affect only small popups",
+			"description": "<co>When enabled, mod affects only small popups (ones that occupy less than 1/4 of the screen area)</c>",
+			"default": false
+		},
+
+		"heavy-popups": {
+			"type": "bool",
+			"name": "Heavy popups",
+			"description": "<cy>Makes bigger popups bounce slower while smaller popups faster</c>",
+			"default": true
+		},
+
+		"anim-speed": {
+			"type": "float",
+			"name": "Speed",
+			"description": "<cl>The speed at which the popup is moving (apply settings and open a new popup to see the changes in speed)</c>",
+			"default": 1,
+			"max": 5,
+			"min": 0.2,
+			"control": {
+				"slider": true,
+				"arrows": true,
+				"arrow-step": 0.1,
+				"slider-step": 0.01,
+				"input": true
+			}
+		},
+		
+		"delay": {
+			"type": "float",
+			"name": "Initial delay",
+			"description": "<cj>Time (in seconds) before the popup starts moving</c>",
+			"default": 0,
+			"max": 60,
+			"min": 0,
+			"control": {
+				"slider": true,
+				"arrows": true,
+				"arrow-step": 0.1,
+				"input": true
+			}
+		}
+	}
+}
