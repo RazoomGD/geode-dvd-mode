@@ -8,9 +8,9 @@
 	},
 	"id": "razoom.dvd_mode",
 	"name": "DVD Mode",
-	"version": "v1.0.0",
+	"version": "v1.0.1",
 	"developer": "RaZooM",
-	"tags": ["joke"],
+	"tags": ["joke", "universal"],
 	"links": {
 		"source": "https://github.com/RazoomGD/geode-dvd-mode",
 		"community": "https://discord.gg/wcWvtKHP8n"

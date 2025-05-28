@@ -2,26 +2,53 @@
 
 using namespace geode::prelude;
 
-#include <Geode/modify/FLAlertLayer.hpp>
+#include <Geode/modify/InfoLayer.hpp>
 #include <Geode/modify/SetIDPopup.hpp>
-#include <Geode/modify/SetTextPopup.hpp>
-#include <Geode/modify/SetupTriggerPopup.hpp>
 #include <Geode/modify/ShardsPage.hpp>
-#include <Geode/modify/CharacterColorPage.hpp>
-#include <Geode/modify/CommunityCreditsPage.hpp>
-#include <Geode/modify/ColorSelectPopup.hpp>
-#include <Geode/modify/CustomSongLayer.hpp>
-#include <Geode/modify/SetupPulsePopup.hpp>
-#include <Geode/modify/DailyLevelPage.hpp>
-#include <Geode/modify/GJPathsLayer.hpp>
 #include <Geode/modify/GJPathPage.hpp>
-#include <Geode/modify/ChallengesPage.hpp>
+#include <Geode/modify/RewardsPage.hpp>
+#include <Geode/modify/ProfilePage.hpp>
+#include <Geode/modify/UploadPopup.hpp>
+#include <Geode/modify/SetTextPopup.hpp>
+#include <Geode/modify/GJPathsLayer.hpp>
 #include <Geode/modify/GJPromoPopup.hpp>
+#include <Geode/modify/FLAlertLayer.hpp>
+#include <Geode/modify/HSVLiveOverlay.hpp>
+#include <Geode/modify/DailyLevelPage.hpp>
+#include <Geode/modify/ChallengesPage.hpp>
+#include <Geode/modify/TopArtistsLayer.hpp>
+#include <Geode/modify/UploadListPopup.hpp>
+#include <Geode/modify/SetupPulsePopup.hpp>
+#include <Geode/modify/CustomSongLayer.hpp>
 #include <Geode/modify/LevelLeaderboard.hpp>
+#include <Geode/modify/FollowRewardPage.hpp>
+#include <Geode/modify/ColorSelectPopup.hpp>
+#include <Geode/modify/SetupTriggerPopup.hpp>
+#include <Geode/modify/RewardUnlockLayer.hpp>
+#include <Geode/modify/CharacterColorPage.hpp>
+#include <Geode/modify/CollisionBlockPopup.hpp>
+#include <Geode/modify/SetupSmartBlockLayer.hpp>
+#include <Geode/modify/CommunityCreditsPage.hpp>
+#include <Geode/modify/ColorSelectLiveOverlay.hpp>
+#include <Geode/modify/SetupObjectOptionsPopup.hpp>
+
+
+#define BOUNCE_ID "bouncing"_spr
+#define NO_BOUNCE_ID "no-bounce"_spr
+#define BG_REPLACER_ID "bg-replacer"_spr
 
 
 #define setting(type, name) Mod::get()->getSettingValue<type>(name)
 #define area(ccSize) (ccSize.width * ccSize.height)
+
+
+#define STANDARD_BOUNCE(classname) class $modify(classname) {			\
+	void show() {														\
+		classname::show();												\
+		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();	\
+	}																	\
+};																		\
+
 
 class $modify(MyFLAlertLayer, FLAlertLayer) {
 
@@ -30,32 +57,45 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 		short yVector;
 		CCRect bouncingRect;
 		float speed;
+		bool started = false;
 	};
+
 
 	inline void scheduleBounceStart(float wait = 0) {
 		scheduleOnce(schedule_selector(MyFLAlertLayer::startBouncing), wait);
 	}
 
+
 	void startBouncing(float) {
 		// if (getParent() != CCScene::get()) return;
 		if (!setting(bool, "enable")) return;
+		if (m_fields->started) return;
+		if (!getParent()) return;
+		if (getUserObject(NO_BOUNCE_ID)) return;
+
 		for (CCNode* node = this; node != nullptr; node = node->getParent()) {
-			if (node->getUserObject("bouncing"_spr)) return;
+			if (node->getUserObject(BOUNCE_ID)) return;
 		}
-		if (getUserObject("no-bounce"_spr)) return;
+
 		if (setting(bool, "no-triggers")) {
 			if (typeinfo_cast<SetupTriggerPopup*>(this)) return;
 			if (typeinfo_cast<GJColorSetupLayer*>(this)) return;
 			if (typeinfo_cast<HSVWidgetPopup*>(this)) return;
 			if (typeinfo_cast<LevelSettingsLayer*>(this)) return;
+			if (typeinfo_cast<ColorSelectLiveOverlay*>(this)) return;
+			if (typeinfo_cast<HSVLiveOverlay*>(this)) return;
 			if (getID() == "SetGroupIDLayer") return;
 			if (getID() == "CustomizeObjectLayer") return;
 		}
 
 		if (!m_mainLayer) return;
 		CCNode* bg = m_mainLayer->getChildByType<CCScale9Sprite>(0);
+		if (!bg) bg = m_mainLayer->getChildByID(BG_REPLACER_ID);
 		if (!bg) bg = m_mainLayer->getChildByType<CCSprite>(0);
 		if (!bg) return;
+
+		// exceptions
+		if (bg->getID() == "eclipse.eclipse-menu/bg-behind") return;
 
 		const auto winSz = CCDirector::get()->getWinSize();
 		const auto bgBox = bg->boundingBox();
@@ -82,13 +122,21 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 			m_fields->speed = setting(float, "anim-speed") * 40;
 		}
 
+		for (auto* child : CCArrayExt<CCNode*>(getChildren())) {
+			if (typeinfo_cast<FLAlertLayer*>(child)) {
+				continue; // don't touch stacked popups
+			}
+			child->setUserObject(BOUNCE_ID, CCBool::create(true));
+		}
+		
 		runAction(CCSequence::createWithTwoActions(
 			CCDelayTime::create(setting(float, "delay")),
 			CCCallFunc::create(this, callfunc_selector(MyFLAlertLayer::bounce))
 		));
 
-		setUserObject("bouncing"_spr, CCBool::create(true));
+		m_fields->started = true;
 	}
+
 
 	void bounce() {
 		const auto pos = m_mainLayer->convertToWorldSpace(m_mainLayer->getContentSize() / 2);
@@ -118,6 +166,7 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 		// run action
 		bool flag = true;
 		for (auto* child : CCArrayExt<CCNode*>(getChildren())) {
+			if (!child->getUserObject(BOUNCE_ID)) continue;
 			if (flag) {
 				child->runAction(CCSequence::createWithTwoActions(
 					CCMoveBy::create(delay, ccp(f->xVector, f->yVector) * dist),
@@ -128,135 +177,70 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 				child->runAction(CCMoveBy::create(delay, ccp(f->xVector, f->yVector) * dist));
 			}
 		}
-		
 	}
+
 
 	void show() {
 		FLAlertLayer::show();
-		if (getID() == "ProfilePage") return; //  - stacked popups issue 
 		scheduleBounceStart();
 	}
 };
 
 
-// special popups
+// popups
 
-class $modify(SetIDPopup) {
+STANDARD_BOUNCE(InfoLayer)
+STANDARD_BOUNCE(SetIDPopup)
+STANDARD_BOUNCE(ShardsPage)
+STANDARD_BOUNCE(GJPathPage)
+STANDARD_BOUNCE(RewardsPage)
+STANDARD_BOUNCE(ProfilePage)
+STANDARD_BOUNCE(UploadPopup)
+STANDARD_BOUNCE(SetTextPopup)
+STANDARD_BOUNCE(GJPathsLayer)
+STANDARD_BOUNCE(GJPromoPopup)
+STANDARD_BOUNCE(DailyLevelPage)
+STANDARD_BOUNCE(ChallengesPage)
+STANDARD_BOUNCE(TopArtistsLayer)
+STANDARD_BOUNCE(UploadListPopup)
+STANDARD_BOUNCE(SetupPulsePopup)
+STANDARD_BOUNCE(CustomSongLayer)
+STANDARD_BOUNCE(LevelLeaderboard)
+STANDARD_BOUNCE(FollowRewardPage)
+STANDARD_BOUNCE(ColorSelectPopup)
+STANDARD_BOUNCE(SetupTriggerPopup)
+STANDARD_BOUNCE(CharacterColorPage)
+STANDARD_BOUNCE(CollisionBlockPopup)
+STANDARD_BOUNCE(SetupSmartBlockLayer)
+// STANDARD_BOUNCE(CommunityCreditsPage) <-- bug
+STANDARD_BOUNCE(ColorSelectLiveOverlay)
+STANDARD_BOUNCE(SetupObjectOptionsPopup)
+
+
+class $modify(HSVLiveOverlay) {
 	void show() {
-		SetIDPopup::show();
+		HSVLiveOverlay::show();
+		if (typeinfo_cast<HSVLiveOverlay*>(this)) { // ! bindings address issue
+			if (m_widget && m_mainLayer) { // fix non-standard popup structure
+				if (auto realBg = m_widget->getChildByType<CCScale9Sprite>(0)) {
+					auto fakeBg = CCSprite::create();
+					fakeBg->setPosition(m_widget->getPosition());
+					fakeBg->setContentSize(realBg->getScaledContentSize() * m_widget->getScale());
+					m_mainLayer->addChild(fakeBg);
+					fakeBg->setID(BG_REPLACER_ID);
+				}
+			}
+		}
 		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
 	}
 };
 
-class $modify(SetTextPopup) {
-	void show() {
-		SetTextPopup::show();
+
+class $modify(RewardUnlockLayer) {
+	bool init(int p0, RewardsPage* p1) { // in init
+		if (!RewardUnlockLayer::init(p0, p1)) return false;
 		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(SetupTriggerPopup) {
-	void show() {
-		SetupTriggerPopup::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(ShardsPage) {
-	void show() {
-		ShardsPage::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(CharacterColorPage) {
-	void show() {
-		CharacterColorPage::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-// class $modify(RewardsPage) { - stacked popups issue 
-// 	void show() {
-// 		RewardsPage::show();
-// 		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-// 	}
-// };
-
-// class $modify(InfoLayer) { - stacked popups issue
-// 	void show() {
-// 		InfoLayer::show();
-// 		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-// 	}
-// };
-
-class $modify(CommunityCreditsPage) {
-	void show() {
-		CommunityCreditsPage::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(ColorSelectPopup) {
-	void show() {
-		ColorSelectPopup::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(CustomSongLayer) {
-	void show() {
-		CustomSongLayer::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(SetupPulsePopup) {
-	void show() {
-		SetupPulsePopup::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(DailyLevelPage) {
-	void show() {
-		DailyLevelPage::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(GJPathsLayer) {
-	void show() {
-		GJPathsLayer::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(GJPathPage) {
-	void show() {
-		GJPathPage::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(ChallengesPage) {
-	void show() {
-		ChallengesPage::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(GJPromoPopup) {
-	void show() {
-		GJPromoPopup::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-	}
-};
-
-class $modify(LevelLeaderboard) {
-	void show() {
-		LevelLeaderboard::show();
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
+		return true;
 	}
 };
 
