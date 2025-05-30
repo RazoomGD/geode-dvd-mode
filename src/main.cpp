@@ -36,6 +36,7 @@ using namespace geode::prelude;
 #define BOUNCE_ID "bouncing"_spr
 #define NO_BOUNCE_ID "no-bounce"_spr
 #define BG_REPLACER_ID "bg-replacer"_spr
+#define BOUNCE_PRESET_ID "bounce-preset"_spr
 
 
 #define setting(type, name) Mod::get()->getSettingValue<type>(name)
@@ -50,6 +51,18 @@ using namespace geode::prelude;
 };																		\
 
 
+struct BouncePreset : CCObject {
+	short m_xVec, m_yVec;
+	CCPoint m_pos;
+	BouncePreset(short xVec, short yVec, CCPoint pos): m_xVec(xVec), m_yVec(yVec), m_pos(pos) {
+		this->autorelease();
+	}
+}; 
+
+
+void findPage(std::string id, int zOrd, short xVec, short yVec, CCPoint pos);
+
+
 class $modify(MyFLAlertLayer, FLAlertLayer) {
 
 	struct Fields {
@@ -58,6 +71,7 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 		CCRect bouncingRect;
 		float speed;
 		bool started = false;
+		bool trackPages = false;
 	};
 
 
@@ -97,6 +111,22 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 		// exceptions
 		if (bg->getID() == "eclipse.eclipse-menu/bg-behind") return;
 
+		// paged popups
+		bool usePresetValues = false;
+		if (auto menu = m_mainLayer->getChildByID("main-menu")) {
+			if (menu->getChildByID("cvolton.betterinfo/next-button")) {
+				m_fields->trackPages = true;
+
+				if (auto obj = static_cast<BouncePreset*>(getUserObject(BOUNCE_PRESET_ID))) {
+					// not new popup but new page
+					m_fields->xVector = obj->m_xVec;
+					m_fields->yVector = obj->m_yVec;
+					m_mainLayer->setPosition(obj->m_pos);
+					usePresetValues = true;
+				}
+			}
+		}
+
 		const auto winSz = CCDirector::get()->getWinSize();
 		const auto bgBox = bg->boundingBox();
 
@@ -112,9 +142,11 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 			winSz.height - bgBox.size.height
 		);
 
-		int r = rand();
-		m_fields->xVector = (r & 4) ? 1 : -1;
-		m_fields->yVector = (r & 2) ? 1 : -1;
+		if (!usePresetValues) {
+			int r = rand();
+			m_fields->xVector = (r & 4) ? 1 : -1;
+			m_fields->yVector = (r & 2) ? 1 : -1;
+		}
 		
 		if (setting(bool, "heavy-popups")) {
 			m_fields->speed = (66 - 0.0003 * area(bgBox.size)) * (setting(float, "anim-speed"));
@@ -128,13 +160,17 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 			}
 			child->setUserObject(BOUNCE_ID, CCBool::create(true));
 		}
-		
-		runAction(CCSequence::createWithTwoActions(
-			CCDelayTime::create(setting(float, "delay")),
-			CCCallFunc::create(this, callfunc_selector(MyFLAlertLayer::bounce))
-		));
 
 		m_fields->started = true;
+		
+		if (usePresetValues) {
+			bounce();
+		} else {
+			runAction(CCSequence::createWithTwoActions(
+				CCDelayTime::create(setting(float, "delay")),
+				CCCallFunc::create(this, callfunc_selector(MyFLAlertLayer::bounce))
+			));
+		}
 	}
 
 
@@ -180,11 +216,37 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 	}
 
 
+	void onBtn1(CCObject* sender) {
+		if (!m_mainLayer || !m_fields->trackPages) return FLAlertLayer::onBtn1(sender);
+		const auto id = getID();
+		const auto zOrd = getZOrder();
+		const auto xVec = m_fields->xVector;
+		const auto yVec = m_fields->yVector;
+		const auto pos = m_mainLayer->getPosition();
+
+		FLAlertLayer::onBtn1(sender);
+
+		queueInMainThread([id, zOrd, xVec, yVec, pos](){
+			findPage(id, zOrd, xVec, yVec, pos);
+		});
+	}
+
+
 	void show() {
 		FLAlertLayer::show();
 		scheduleBounceStart();
 	}
 };
+
+
+void findPage(std::string id, int zOrd, short xVec, short yVec, CCPoint pos) {
+	if (auto popup = CCScene::get()->getChildByID(id); popup && popup->getZOrder() == zOrd) {
+		if (typeinfo_cast<FLAlertLayer*>(popup)) {
+			popup->setUserObject(BOUNCE_PRESET_ID, new BouncePreset(xVec, yVec, pos));
+			reinterpret_cast<MyFLAlertLayer*>(popup)->startBouncing(0);
+		}
+	}
+}
 
 
 // popups
