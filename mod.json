@@ -1,14 +1,14 @@
 {
-	"geode": "4.4.0",
+	"geode": "5.0.0-beta.3",
 	"gd": {
-		"win": "2.2074",
-		"android": "2.2074",
-		"mac": "2.2074",
-		"ios": "2.2074"
+		"win": "2.2081",
+		"android": "2.2081",
+		"mac": "2.2081",
+		"ios": "2.2081"
 	},
 	"id": "razoom.dvd_mode",
 	"name": "DVD Mode",
-	"version": "v1.0.1",
+	"version": "v1.0.2",
 	"developer": "RaZooM",
 	"tags": ["joke", "universal"],
 	"links": {
@@ -16,6 +16,8 @@
 		"community": "https://discord.gg/wcWvtKHP8n"
 	},
 	"description": "Adds legendary DVD screensaver bouncing to GD popups",
+	
+	"early-load": true,
 
 	"settings": {
 		"enable": {

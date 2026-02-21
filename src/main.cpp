@@ -32,6 +32,8 @@ using namespace geode::prelude;
 #include <Geode/modify/ColorSelectLiveOverlay.hpp>
 #include <Geode/modify/SetupObjectOptionsPopup.hpp>
 
+// #include <Geode/modify/CCTouchDispatcher.hpp>
+
 
 #define BOUNCE_ID "bouncing"_spr
 #define NO_BOUNCE_ID "no-bounce"_spr
@@ -104,6 +106,7 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 
 		if (!m_mainLayer) return;
 		CCNode* bg = m_mainLayer->getChildByType<CCScale9Sprite>(0);
+		if (!bg) bg = m_mainLayer->getChildByType<NineSlice>(0);
 		if (!bg) bg = m_mainLayer->getChildByID(BG_REPLACER_ID);
 		if (!bg) bg = m_mainLayer->getChildByType<CCSprite>(0);
 		if (!bg) return;
@@ -248,6 +251,14 @@ void findPage(std::string id, int zOrd, short xVec, short yVec, CCPoint pos) {
 	}
 }
 
+// class $modify(CCTouchDispatcher) {
+// 	void registerForcePrio(CCObject* p0, int p1) {
+// 		CCTouchDispatcher::registerForcePrio(p0, p1);
+// 		if (auto popup = typeinfo_cast<FLAlertLayer*>(p0)) {
+// 			reinterpret_cast<MyFLAlertLayer*>(popup)->scheduleBounceStart();
+// 		}
+// 	}
+// };
 
 // popups
 
