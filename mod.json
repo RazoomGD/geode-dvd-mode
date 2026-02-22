@@ -8,7 +8,7 @@
 	},
 	"id": "razoom.dvd_mode",
 	"name": "DVD Mode",
-	"version": "v1.0.2",
+	"version": "v1.0.3",
 	"developer": "RaZooM",
 	"tags": ["joke", "universal"],
 	"links": {
@@ -17,8 +17,6 @@
 	},
 	"description": "Adds legendary DVD screensaver bouncing to GD popups",
 	
-	"early-load": true,
-
 	"settings": {
 		"enable": {
 			"type": "bool",

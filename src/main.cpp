@@ -2,37 +2,12 @@
 
 using namespace geode::prelude;
 
-#include <Geode/modify/InfoLayer.hpp>
-#include <Geode/modify/SetIDPopup.hpp>
-#include <Geode/modify/ShardsPage.hpp>
-#include <Geode/modify/GJPathPage.hpp>
-#include <Geode/modify/RewardsPage.hpp>
-#include <Geode/modify/ProfilePage.hpp>
-#include <Geode/modify/UploadPopup.hpp>
-#include <Geode/modify/SetTextPopup.hpp>
-#include <Geode/modify/GJPathsLayer.hpp>
-#include <Geode/modify/GJPromoPopup.hpp>
+
 #include <Geode/modify/FLAlertLayer.hpp>
 #include <Geode/modify/HSVLiveOverlay.hpp>
-#include <Geode/modify/DailyLevelPage.hpp>
-#include <Geode/modify/ChallengesPage.hpp>
-#include <Geode/modify/TopArtistsLayer.hpp>
-#include <Geode/modify/UploadListPopup.hpp>
-#include <Geode/modify/SetupPulsePopup.hpp>
-#include <Geode/modify/CustomSongLayer.hpp>
 #include <Geode/modify/LevelLeaderboard.hpp>
-#include <Geode/modify/FollowRewardPage.hpp>
-#include <Geode/modify/ColorSelectPopup.hpp>
-#include <Geode/modify/SetupTriggerPopup.hpp>
-#include <Geode/modify/RewardUnlockLayer.hpp>
-#include <Geode/modify/CharacterColorPage.hpp>
-#include <Geode/modify/CollisionBlockPopup.hpp>
-#include <Geode/modify/SetupSmartBlockLayer.hpp>
-#include <Geode/modify/CommunityCreditsPage.hpp>
-#include <Geode/modify/ColorSelectLiveOverlay.hpp>
-#include <Geode/modify/SetupObjectOptionsPopup.hpp>
 
-// #include <Geode/modify/CCTouchDispatcher.hpp>
+#include <Geode/modify/CCTouchDispatcher.hpp>
 
 
 #define BOUNCE_ID "bouncing"_spr
@@ -72,26 +47,29 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 		short yVector;
 		CCRect bouncingRect;
 		float speed;
-		bool started = false;
-		bool trackPages = false;
+		bool actionCreated = false;
+		bool fixDropDownAnimation = false;
 	};
 
 
 	inline void scheduleBounceStart(float wait = 0) {
-		scheduleOnce(schedule_selector(MyFLAlertLayer::startBouncing), wait);
+		scheduleOnce(schedule_selector(MyFLAlertLayer::createBounceAction), wait);
 	}
 
 
-	void startBouncing(float) {
+	void createBounceAction(float) {
+		auto f = m_fields.self();
 		// if (getParent() != CCScene::get()) return;
 		if (!setting(bool, "enable")) return;
-		if (m_fields->started) return;
+		if (f->actionCreated) return;
 		if (!getParent()) return;
 		if (getUserObject(NO_BOUNCE_ID)) return;
 
 		for (CCNode* node = this; node != nullptr; node = node->getParent()) {
 			if (node->getUserObject(BOUNCE_ID)) return;
 		}
+
+		f->actionCreated = true;
 
 		if (setting(bool, "no-triggers")) {
 			if (typeinfo_cast<SetupTriggerPopup*>(this)) return;
@@ -114,20 +92,18 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 		// exceptions
 		if (bg->getID() == "eclipse.eclipse-menu/bg-behind") return;
 
-		// paged popups
+		// popups with presets
 		bool usePresetValues = false;
-		if (auto menu = m_mainLayer->getChildByID("main-menu")) {
-			if (menu->getChildByID("cvolton.betterinfo/next-button")) {
-				m_fields->trackPages = true;
+		if (auto obj = static_cast<BouncePreset*>(getUserObject(BOUNCE_PRESET_ID))) {
+			f->xVector = obj->m_xVec;
+			f->yVector = obj->m_yVec;
+			m_mainLayer->setPosition(obj->m_pos);
+			usePresetValues = true;
+		}
 
-				if (auto obj = static_cast<BouncePreset*>(getUserObject(BOUNCE_PRESET_ID))) {
-					// not new popup but new page
-					m_fields->xVector = obj->m_xVec;
-					m_fields->yVector = obj->m_yVec;
-					m_mainLayer->setPosition(obj->m_pos);
-					usePresetValues = true;
-				}
-			}
+		// fix popups with dropdown animations
+		if (typeinfo_cast<CommunityCreditsPage*>(this)) {
+			f->fixDropDownAnimation = true;
 		}
 
 		const auto winSz = CCDirector::get()->getWinSize();
@@ -138,7 +114,7 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 
 		const CCPoint shift = ccp(bgBox.getMidX(), bgBox.getMidY()) - (m_mainLayer->getContentSize() / 2);
 
-		m_fields->bouncingRect = CCRect(
+		f->bouncingRect = CCRect(
 			bgBox.size.width / 2 - shift.x,
 			bgBox.size.height / 2 - shift.y,
 			winSz.width - bgBox.size.width,
@@ -147,14 +123,14 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 
 		if (!usePresetValues) {
 			int r = rand();
-			m_fields->xVector = (r & 4) ? 1 : -1;
-			m_fields->yVector = (r & 2) ? 1 : -1;
+			f->xVector = (r & 4) ? 1 : -1;
+			f->yVector = (r & 2) ? 1 : -1;
 		}
 		
 		if (setting(bool, "heavy-popups")) {
-			m_fields->speed = (66 - 0.0003 * area(bgBox.size)) * (setting(float, "anim-speed"));
+			f->speed = (66 - 0.0003 * area(bgBox.size)) * (setting(float, "anim-speed"));
 		} else {
-			m_fields->speed = setting(float, "anim-speed") * 40;
+			f->speed = setting(float, "anim-speed") * 40;
 		}
 
 		for (auto* child : CCArrayExt<CCNode*>(getChildren())) {
@@ -163,8 +139,6 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 			}
 			child->setUserObject(BOUNCE_ID, CCBool::create(true));
 		}
-
-		m_fields->started = true;
 		
 		if (usePresetValues) {
 			bounce();
@@ -178,8 +152,18 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 
 
 	void bounce() {
-		const auto pos = m_mainLayer->convertToWorldSpace(m_mainLayer->getContentSize() / 2);
 		const auto f = m_fields.self();
+
+		CCPoint pos;
+		if (f->fixDropDownAnimation) {
+			auto oldPoint = m_mainLayer->getPosition();
+			m_mainLayer->setPosition({0,0});
+			pos = m_mainLayer->convertToWorldSpace(m_mainLayer->getContentSize() / 2);
+			m_mainLayer->setPosition(oldPoint);
+			f->fixDropDownAnimation = false;
+		} else {
+			pos = m_mainLayer->convertToWorldSpace(m_mainLayer->getContentSize() / 2);
+		}
 
 		// find the next direction vector
 		bool xSwitched = false;
@@ -220,7 +204,14 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 
 
 	void onBtn1(CCObject* sender) {
-		if (!m_mainLayer || !m_fields->trackPages) return FLAlertLayer::onBtn1(sender);
+		// fix betterinfo pages popups
+		bool trackPages = false;
+		if (auto menu = m_mainLayer->getChildByID("main-menu")) {
+			if (menu->getChildByID("cvolton.betterinfo/next-button")) {
+				trackPages = true;
+			}
+		}
+		if (!m_mainLayer || !trackPages) return FLAlertLayer::onBtn1(sender);
 		const auto id = getID();
 		const auto zOrd = getZOrder();
 		const auto xVec = m_fields->xVector;
@@ -233,11 +224,20 @@ class $modify(MyFLAlertLayer, FLAlertLayer) {
 			findPage(id, zOrd, xVec, yVec, pos);
 		});
 	}
+};
 
-
-	void show() {
-		FLAlertLayer::show();
-		scheduleBounceStart();
+class $modify(LevelLeaderboard) {
+	// fix leaderboard pages
+	void reloadLeaderboard(LevelLeaderboardType type, LevelLeaderboardMode mode) {
+		// don't do f = m_fields here, it'll crash
+		short xVec = reinterpret_cast<MyFLAlertLayer*>(this)->m_fields->xVector;
+		short yVec = reinterpret_cast<MyFLAlertLayer*>(this)->m_fields->yVector;
+		auto pos = m_mainLayer->getPosition();
+		LevelLeaderboard::reloadLeaderboard(type, mode);
+		if (auto newPopup = CCScene::get()->getChildByType<LevelLeaderboard>(0)) {
+			newPopup->setUserObject(BOUNCE_PRESET_ID, new BouncePreset(xVec, yVec, pos));
+			newPopup->m_mainLayer->setPosition(pos);
+		}
 	}
 };
 
@@ -246,48 +246,10 @@ void findPage(std::string id, int zOrd, short xVec, short yVec, CCPoint pos) {
 	if (auto popup = CCScene::get()->getChildByID(id); popup && popup->getZOrder() == zOrd) {
 		if (typeinfo_cast<FLAlertLayer*>(popup)) {
 			popup->setUserObject(BOUNCE_PRESET_ID, new BouncePreset(xVec, yVec, pos));
-			reinterpret_cast<MyFLAlertLayer*>(popup)->startBouncing(0);
+			reinterpret_cast<MyFLAlertLayer*>(popup)->createBounceAction(0);
 		}
 	}
 }
-
-// class $modify(CCTouchDispatcher) {
-// 	void registerForcePrio(CCObject* p0, int p1) {
-// 		CCTouchDispatcher::registerForcePrio(p0, p1);
-// 		if (auto popup = typeinfo_cast<FLAlertLayer*>(p0)) {
-// 			reinterpret_cast<MyFLAlertLayer*>(popup)->scheduleBounceStart();
-// 		}
-// 	}
-// };
-
-// popups
-
-STANDARD_BOUNCE(InfoLayer)
-STANDARD_BOUNCE(SetIDPopup)
-STANDARD_BOUNCE(ShardsPage)
-STANDARD_BOUNCE(GJPathPage)
-STANDARD_BOUNCE(RewardsPage)
-STANDARD_BOUNCE(ProfilePage)
-STANDARD_BOUNCE(UploadPopup)
-STANDARD_BOUNCE(SetTextPopup)
-STANDARD_BOUNCE(GJPathsLayer)
-STANDARD_BOUNCE(GJPromoPopup)
-STANDARD_BOUNCE(DailyLevelPage)
-STANDARD_BOUNCE(ChallengesPage)
-STANDARD_BOUNCE(TopArtistsLayer)
-STANDARD_BOUNCE(UploadListPopup)
-STANDARD_BOUNCE(SetupPulsePopup)
-STANDARD_BOUNCE(CustomSongLayer)
-STANDARD_BOUNCE(LevelLeaderboard)
-STANDARD_BOUNCE(FollowRewardPage)
-STANDARD_BOUNCE(ColorSelectPopup)
-STANDARD_BOUNCE(SetupTriggerPopup)
-STANDARD_BOUNCE(CharacterColorPage)
-STANDARD_BOUNCE(CollisionBlockPopup)
-STANDARD_BOUNCE(SetupSmartBlockLayer)
-// STANDARD_BOUNCE(CommunityCreditsPage) <-- bug
-STANDARD_BOUNCE(ColorSelectLiveOverlay)
-STANDARD_BOUNCE(SetupObjectOptionsPopup)
 
 
 class $modify(HSVLiveOverlay) {
@@ -309,11 +271,12 @@ class $modify(HSVLiveOverlay) {
 };
 
 
-class $modify(RewardUnlockLayer) {
-	bool init(int p0, RewardsPage* p1) { // in init
-		if (!RewardUnlockLayer::init(p0, p1)) return false;
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();
-		return true;
+class $modify(CCTouchDispatcher) {
+	// new way of finding popups
+	void registerForcePrio(CCObject* p0, int p1) {
+		CCTouchDispatcher::registerForcePrio(p0, p1);
+		if (auto popup = typeinfo_cast<FLAlertLayer*>(p0)) {
+			reinterpret_cast<MyFLAlertLayer*>(popup)->scheduleBounceStart();
+		}
 	}
 };
-
