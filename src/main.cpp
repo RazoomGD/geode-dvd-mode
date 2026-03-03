@@ -1,14 +1,12 @@
 #include <Geode/Geode.hpp>
 
-using namespace geode::prelude;
-
-
 #include <Geode/modify/FLAlertLayer.hpp>
 #include <Geode/modify/HSVLiveOverlay.hpp>
 #include <Geode/modify/LevelLeaderboard.hpp>
 
 #include <Geode/modify/CCTouchDispatcher.hpp>
 
+using namespace geode::prelude;
 
 #define BOUNCE_ID "bouncing"_spr
 #define NO_BOUNCE_ID "no-bounce"_spr
@@ -19,15 +17,6 @@ using namespace geode::prelude;
 #define setting(type, name) Mod::get()->getSettingValue<type>(name)
 #define area(ccSize) (ccSize.width * ccSize.height)
 
-
-#define STANDARD_BOUNCE(classname) class $modify(classname) {			\
-	void show() {														\
-		classname::show();												\
-		reinterpret_cast<MyFLAlertLayer*>(this)->scheduleBounceStart();	\
-	}																	\
-};																		\
-
-
 struct BouncePreset : CCObject {
 	short m_xVec, m_yVec;
 	CCPoint m_pos;
@@ -37,7 +26,7 @@ struct BouncePreset : CCObject {
 }; 
 
 
-void findPage(std::string id, int zOrd, short xVec, short yVec, CCPoint pos);
+void findPage(const std::string& id, int zOrd, short xVec, short yVec, CCPoint pos);
 
 
 class $modify(MyFLAlertLayer, FLAlertLayer) {
@@ -242,11 +231,14 @@ class $modify(LevelLeaderboard) {
 };
 
 
-void findPage(std::string id, int zOrd, short xVec, short yVec, CCPoint pos) {
-	if (auto popup = CCScene::get()->getChildByID(id); popup && popup->getZOrder() == zOrd) {
-		if (typeinfo_cast<FLAlertLayer*>(popup)) {
-			popup->setUserObject(BOUNCE_PRESET_ID, new BouncePreset(xVec, yVec, pos));
-			reinterpret_cast<MyFLAlertLayer*>(popup)->createBounceAction(0);
+void findPage(const std::string& id, int zOrd, short xVec, short yVec, CCPoint pos) {
+	for (auto node : CCScene::get()->getChildrenExt()) {
+		if (auto popup = typeinfo_cast<FLAlertLayer*>(node)) {
+			if (popup->getZOrder() == zOrd) {
+				popup->setUserObject(BOUNCE_PRESET_ID, new BouncePreset(xVec, yVec, pos));
+				popup->m_mainLayer->setPosition(pos);
+				break;
+			}
 		}
 	}
 }
